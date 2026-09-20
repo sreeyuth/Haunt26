@@ -67,15 +67,12 @@
   .landing-grid{
     display:grid;
     grid-template-columns: 1.05fr 0.95fr;
-    grid-template-areas: "details register" "highlights .";
-    gap:20px 44px; align-items:start;
+    gap:44px; align-items:start;
   }
-  .details-col{ grid-area:details; }
-  .highlights-col{ grid-area:highlights; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  .register-col{ grid-area:register; position:sticky; top:20px; }
+  .register-col{ position:sticky; top:20px; }
 
   @media (max-width:900px){
-    .landing-grid{ grid-template-columns:1fr; grid-template-areas: "details" "register" "highlights"; }
+    .landing-grid{ grid-template-columns:1fr; }
     .register-col{ position:static; }
     .highlights-col{ grid-template-columns:1fr; }
   }
@@ -103,6 +100,7 @@
   }
 
   /* ===== TICKET OPTION HIGHLIGHT CARDS ===== */
+  .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
   .option-card{
     background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px 18px 14px;
     box-shadow:var(--shadow);
@@ -362,28 +360,28 @@
           <div class="row"><span class="tag">Bus</span> Departs ~5:30 AM Oct 17 · Returns ~5:30 AM Oct 18 · Stops in Pembroke, Petawawa, Chalk River, Deep River</div>
         </div>
         <div class="deadline-note">⏰ Registration deadline: Friday, September 25</div>
-      </div>
 
-      <div class="highlights-col">
-        <div class="option-card opt1">
-          <h3>Option 1 — Bus Trip</h3>
-          <span class="opt-price">$99 / person</span>
-          <ul>
-            <li>Round-trip coach bus (Pembroke · Petawawa · Chalk River · Deep River), incl. driver gratuity</li>
-            <li>Entry ticket to Canada's Wonderland</li>
-            <li>Dinner at the park</li>
-            <li>Halloween Haunt entry</li>
-          </ul>
-        </div>
-        <div class="option-card opt2">
-          <h3>Option 2 — Self Transportation</h3>
-          <span class="opt-price">$99 / person</span>
-          <ul>
-            <li>Parking for one vehicle at Canada's Wonderland</li>
-            <li>Entry ticket to Canada's Wonderland</li>
-            <li>Dinner at the park</li>
-            <li>Halloween Haunt entry</li>
-          </ul>
+        <div class="highlights-col">
+          <div class="option-card opt1">
+            <h3>Option 1 — Bus Trip</h3>
+            <span class="opt-price">$99 / person</span>
+            <ul>
+              <li>Round-trip coach bus (Pembroke · Petawawa · Chalk River · Deep River), incl. driver gratuity</li>
+              <li>Entry ticket to Canada's Wonderland</li>
+              <li>Dinner at the park</li>
+              <li>Halloween Haunt entry</li>
+            </ul>
+          </div>
+          <div class="option-card opt2">
+            <h3>Option 2 — Self Transportation</h3>
+            <span class="opt-price">$99 / person</span>
+            <ul>
+              <li>Parking for one vehicle at Canada's Wonderland</li>
+              <li>Entry ticket to Canada's Wonderland</li>
+              <li>Dinner at the park</li>
+              <li>Halloween Haunt entry</li>
+            </ul>
+          </div>
         </div>
       </div>
 
