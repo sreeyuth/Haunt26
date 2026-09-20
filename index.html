@@ -134,6 +134,13 @@
   .field input:focus-visible{ outline:2px solid var(--orange); outline-offset:1px; }
 
   .ticket-types{ margin-bottom:24px; }
+  select.pickup-select{
+    width:100%; padding:15px 16px; border-radius:11px; border:1.5px solid var(--line);
+    font-family:'Poppins',sans-serif; font-size:1.05rem; background:var(--panel-2); color:var(--ink);
+    cursor:pointer;
+  }
+  select.pickup-select:focus{ outline:none; border-color:var(--orange); }
+  select.pickup-select:focus-visible{ outline:2px solid var(--orange); outline-offset:1px; }
   .ticket-note{ font-size:0.84rem; color:var(--ink-soft); margin:-2px 0 10px 0; font-style:italic; }
   .ticket-row{ display:grid; grid-template-columns:1fr 56px auto; align-items:center; gap:14px; padding:13px 4px; border-bottom:1px solid var(--line); }
   .ticket-row:last-child{ border-bottom:none; }
@@ -419,6 +426,17 @@
                 </div>
               </div>
 
+              <div class="field" id="pickup-field" hidden>
+                <label for="reg-pickup">Pick up point</label>
+                <select id="reg-pickup" class="pickup-select">
+                  <option value="" disabled selected>Select pick up point</option>
+                  <option value="Pembroke">Pembroke</option>
+                  <option value="Petawawa">Petawawa</option>
+                  <option value="Chalk River">Chalk River</option>
+                  <option value="Deep River">Deep River</option>
+                </select>
+              </div>
+
               <div class="divider-row"></div>
 
               <div class="total-box">
@@ -558,6 +576,8 @@
   const emailInput = document.getElementById("reg-email");
   const busSelect = document.getElementById("reg-bus");
   const selfSelect = document.getElementById("reg-self");
+  const pickupField = document.getElementById("pickup-field");
+  const pickupSelect = document.getElementById("reg-pickup");
   const totalAmountEl = document.getElementById("total-amount");
   const etransferAmountEl = document.getElementById("etransfer-amount");
   const confirmToggleBtn = document.getElementById("etransfer-confirm-btn");
@@ -590,11 +610,18 @@
   function currentPartySize(){ const c = ticketCounts(); return c.bus + c.self; }
   function currentTotal(){ return currentPartySize() * TICKET_PRICE; }
 
+  function updatePickupVisibility(){
+    const busCount = parseInt(busSelect.value, 10) || 0;
+    pickupField.hidden = busCount === 0;
+    if (busCount === 0){ pickupSelect.value = ""; }
+  }
+
   function refreshTotals(){
     const total = currentTotal();
     const formatted = "$" + total.toFixed(2);
     totalAmountEl.textContent = formatted;
     etransferAmountEl.textContent = formatted;
+    updatePickupVisibility();
     updateSubmitState();
   }
 
@@ -602,7 +629,9 @@
     const nameOk = nameInput.value.trim().length > 0;
     const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim());
     const partyOk = currentPartySize() >= 1;
-    const ready = nameOk && emailOk && partyOk && etransferConfirmed === true;
+    const busCount = parseInt(busSelect.value, 10) || 0;
+    const pickupOk = busCount === 0 || pickupSelect.value !== "";
+    const ready = nameOk && emailOk && partyOk && pickupOk && etransferConfirmed === true;
     submitBtn.disabled = !ready;
     submitBtn.classList.toggle("enabled", ready);
     if (!etransferConfirmed){
@@ -613,12 +642,15 @@
       helperText.textContent = "Add a valid email so we can reach you.";
     } else if (!partyOk){
       helperText.textContent = "Select at least one ticket.";
+    } else if (!pickupOk){
+      helperText.textContent = "Select a pick up point for your Bus Trip ticket.";
     } else {
       helperText.textContent = "You're all set — confirm below.";
     }
   }
 
   [busSelect, selfSelect].forEach(sel => sel.addEventListener("change", refreshTotals));
+  pickupSelect.addEventListener("change", updateSubmitState);
   nameInput.addEventListener("input", updateSubmitState);
   emailInput.addEventListener("input", updateSubmitState);
 
@@ -805,6 +837,7 @@
       email: emailInput.value.trim(),
       bus: counts.bus,
       self: counts.self,
+      pickup: counts.bus > 0 ? pickupSelect.value : null,
       partySize: currentPartySize(),
       total: currentTotal(),
       timestamp: Date.now()
@@ -831,6 +864,7 @@
     confirmToggleBtn.setAttribute("aria-pressed", "false");
     busSelect.value = "0";
     selfSelect.value = "0";
+    pickupSelect.value = "";
     refreshTotals();
     updateSubmitState();
     confirmView.hidden = true;
@@ -933,6 +967,7 @@
           r.name || "",
           r.email || "",
           parts.length ? parts.join(" / ") : "—",
+          r.pickup || "—",
           String(r.partySize || 0),
           "$" + (r.total || 0).toFixed(2),
           r.paymentDone === "Paid" ? "Paid" : "Payment pending review",
@@ -945,7 +980,7 @@
       const totalAmount = regs.reduce((s,r) => s + (r.total||0), 0);
 
       doc.autoTable({
-        head: [["Attendance","Name","Email","Tickets","Party Size","Total Amount","Payment","Conf Email"]],
+        head: [["Attendance","Name","Email","Tickets","Pickup","Party Size","Total Amount","Payment","Conf Email"]],
         body: body,
         startY: 28,
         styles: { fontSize: 8 },
@@ -1021,8 +1056,9 @@
           </div>`;
       }
       const breakdownParts = [];
-      if (r.bus) breakdownParts.push(r.bus + (r.bus === 1 ? " Bus" : " Bus"));
-      if (r.self) breakdownParts.push(r.self + (r.self === 1 ? " Self" : " Self"));
+      if (r.bus) breakdownParts.push(r.bus + " Bus");
+      if (r.self) breakdownParts.push(r.self + " Self");
+      if (r.pickup) breakdownParts.push("Pickup: " + r.pickup);
       const breakdown = breakdownParts.length ? `<div class="party-breakdown">${breakdownParts.join(", ")}</div>` : "";
 
       rows += `<tr data-id="${r.id}">
