@@ -101,7 +101,7 @@
 
   /* ===== TICKET OPTION HIGHLIGHT CARDS ===== */
   .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
-  .age-note{ margin-top:14px; font-size:0.84rem; line-height:1.5; color:var(--ink-soft); font-style:italic; }
+  .age-note{ margin-top:14px; font-size:1.02rem; line-height:1.55; color:var(--ink-soft); font-style:italic; font-weight:500; }
   .option-card{
     background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px 18px 14px;
     box-shadow:var(--shadow);
@@ -320,10 +320,11 @@
     font-family:'Poppins',sans-serif; font-weight:600; font-size:0.78rem; padding:5px 10px; border-radius:8px;
     border:1.5px solid var(--line); background:var(--panel-2); color:var(--ink); cursor:pointer;
   }
-  .email-status-select.is-none{ border-color:var(--orange); color:var(--orange); }
+  .email-status-select.is-none{ background:var(--panel-2); border-color:var(--orange); color:var(--orange); }
   .email-status-select.is-ack{ background:var(--purple); border-color:var(--purple); color:#fff; }
   .email-status-select.is-tickets{ background:var(--green); border-color:var(--green); color:#fff; }
   .payment-locked.is-ack{ background:var(--purple); color:#fff; }
+  .payment-locked.is-none{ background:var(--panel-2); border:1px solid var(--orange); color:var(--orange); }
   .del-btn{ background:none; border:none; color:var(--rose); cursor:pointer; font-size:0.8rem; font-weight:600; }
   .del-btn:hover{ text-decoration:underline; }
   .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft); background:var(--panel); border-radius:14px; border:1px dashed var(--line); }
