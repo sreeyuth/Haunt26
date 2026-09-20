@@ -67,19 +67,17 @@
   .landing-grid{
     display:grid;
     grid-template-columns: 1.05fr 0.95fr;
-    grid-template-areas: "details register" "highlights register";
-    gap:44px; align-items:start;
+    grid-template-areas: "details register" "highlights .";
+    gap:20px 44px; align-items:start;
   }
   .details-col{ grid-area:details; }
-  .highlights-col{ grid-area:highlights; }
+  .highlights-col{ grid-area:highlights; display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   .register-col{ grid-area:register; position:sticky; top:20px; }
 
   @media (max-width:900px){
     .landing-grid{ grid-template-columns:1fr; grid-template-areas: "details" "register" "highlights"; }
     .register-col{ position:static; }
-  }
-  @media (min-width:901px){
-    .landing-grid{ row-gap:4px; grid-template-rows:min-content min-content; }
+    .highlights-col{ grid-template-columns:1fr; }
   }
 
   .eyebrow{
@@ -105,8 +103,6 @@
   }
 
   /* ===== TICKET OPTION HIGHLIGHT CARDS ===== */
-  .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-  @media (max-width:640px){ .highlights-col{ grid-template-columns:1fr; } }
   .option-card{
     background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px 18px 14px;
     box-shadow:var(--shadow);
