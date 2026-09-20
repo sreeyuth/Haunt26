@@ -79,7 +79,7 @@
     .register-col{ position:static; }
   }
   @media (min-width:901px){
-    .landing-grid{ row-gap:16px; grid-template-rows:min-content min-content; }
+    .landing-grid{ row-gap:4px; grid-template-rows:min-content min-content; }
   }
 
   .eyebrow{
@@ -100,7 +100,7 @@
   .event-meta .tag{ font-family:'JetBrains Mono',monospace; font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:#1a0d02; background:var(--orange); border-radius:5px; padding:3px 8px; margin-top:1px; flex:none; }
   .event-meta a.map-link{ color:var(--orange); text-decoration:underline; text-decoration-color:rgba(255,122,26,0.4); text-underline-offset:3px; }
   .deadline-note{
-    margin-top:18px; display:inline-flex; align-items:center; gap:8px; font-size:0.86rem; font-weight:600;
+    margin-top:14px; display:inline-flex; align-items:center; gap:8px; font-size:0.86rem; font-weight:600;
     color:var(--rose); background:rgba(224,69,90,0.12); border:1px solid rgba(224,69,90,0.4); border-radius:10px; padding:9px 14px;
   }
 
@@ -108,12 +108,12 @@
   .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:640px){ .highlights-col{ grid-template-columns:1fr; } }
   .option-card{
-    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px 18px 20px 18px;
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px 18px 14px;
     box-shadow:var(--shadow);
   }
   .option-card.opt1{ border-top:3px solid var(--orange); }
   .option-card.opt2{ border-top:3px solid var(--purple); }
-  .option-card h3{ font-size:1.02rem; font-weight:700; color:#fff; margin-bottom:2px; }
+  .option-card h3{ font-size:0.96rem; font-weight:700; color:#fff; margin-bottom:2px; white-space:nowrap; }
   .option-card .opt-price{ font-family:'JetBrains Mono',monospace; font-size:0.86rem; color:var(--orange); font-weight:700; margin-bottom:12px; display:block; }
   .option-card.opt2 .opt-price{ color:var(--purple); }
   .option-card ul{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
@@ -541,8 +541,8 @@
 (function(){
   "use strict";
   const TICKET_PRICE = 99;
-  const ADMIN_CODE = "1017";
-  const PAYMENT_CODE = "0925";
+  const ADMIN_CODE = "1983";
+  const PAYMENT_CODE = "1947";
   let adminUnlocked = false;
   let paymentUnlocked = false;
 
