@@ -316,13 +316,14 @@
   .payment-locked{ font-size:0.78rem; font-weight:600; border-radius:999px; padding:5px 12px; display:inline-block; }
   .payment-locked.is-paid{ background:var(--green); color:#fff; }
   .payment-locked.is-notpaid{ background:var(--panel-2); border:1px solid var(--orange); color:var(--orange); }
-  .email-btn{
-    font-family:'Poppins',sans-serif; font-weight:600; font-size:0.76rem; padding:5px 10px; border-radius:8px;
-    border:1.5px solid var(--orange); background:transparent; color:var(--orange); cursor:pointer; transition:all .2s ease;
+  .email-status-select{
+    font-family:'Poppins',sans-serif; font-weight:600; font-size:0.78rem; padding:5px 10px; border-radius:8px;
+    border:1.5px solid var(--line); background:var(--panel-2); color:var(--ink); cursor:pointer;
   }
-  .email-btn:hover:not(:disabled){ background:var(--orange); color:#1a0d02; }
-  .email-btn.sent{ background:var(--green); border-color:var(--green); color:#fff; cursor:default; opacity:1; }
-  .email-btn:disabled{ cursor:not-allowed; }
+  .email-status-select.is-none{ border-color:var(--orange); color:var(--orange); }
+  .email-status-select.is-ack{ background:var(--purple); border-color:var(--purple); color:#fff; }
+  .email-status-select.is-tickets{ background:var(--green); border-color:var(--green); color:#fff; }
+  .payment-locked.is-ack{ background:var(--purple); color:#fff; }
   .del-btn{ background:none; border:none; color:var(--rose); cursor:pointer; font-size:0.8rem; font-weight:600; }
   .del-btn:hover{ text-decoration:underline; }
   .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft); background:var(--panel); border-radius:14px; border:1px dashed var(--line); }
@@ -469,7 +470,7 @@
           <div id="confirm-view" class="confirmation" hidden>
             <svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" fill="#FF7A1A"/><path d="M20 33 L28 41 L45 23" stroke="#0A0710" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             <h3>Thank you!</h3>
-            <p>Your spot is reserved. A committee member will send a confirmation email once your e-transfer is verified. See you at Canada's Wonderland!</p>
+            <p>Your spot is reserved. Further details will be sent by e-mail by CR Social Club. See you at Canada's Wonderland!</p>
             <button type="button" id="register-another">Register another party</button>
           </div>
 
@@ -767,12 +768,12 @@
     }
   }
 
-  async function markConfEmailSent(id){
+  async function updateEmailStatus(id, value){
     try{
-      await update(ref(db, "registrations/" + id), { confEmailSent: true });
+      await update(ref(db, "registrations/" + id), { emailStatus: value });
       return true;
     }catch(err){
-      console.error("Failed to record confirmation email status:", err);
+      console.error("Failed to update email status:", err);
       return false;
     }
   }
@@ -971,7 +972,7 @@
           String(r.partySize || 0),
           "$" + (r.total || 0).toFixed(2),
           r.paymentDone === "Paid" ? "Paid" : "Payment pending review",
-          r.confEmailSent ? "Sent" : "Not sent"
+          r.emailStatus || "No email sent"
         ];
       });
       const totalGuests = regs.reduce((s,r) => s + (r.partySize||0), 0);
@@ -1036,23 +1037,26 @@
     let rows = "";
     regs.forEach(r => {
       const paid = r.paymentDone === "Paid";
-      const emailSent = !!r.confEmailSent;
+      const emailStatus = r.emailStatus || "No email sent";
+      const emailClass = emailStatus === "Tickets sent" ? "is-tickets" : (emailStatus === "Acknwldg. sent" ? "is-ack" : "is-none");
       let paymentCell;
       if (paymentUnlocked){
-        const emailBtn = emailSent
-          ? `<button class="email-btn sent" disabled data-id="${r.id}">Conf email sent</button>`
-          : `<button class="email-btn" data-id="${r.id}">Send conf email</button>`;
+        const emailSelect = `<select class="email-status-select ${emailClass}" data-id="${r.id}">
+            <option value="No email sent" ${emailStatus === "No email sent" ? "selected" : ""}>No email sent</option>
+            <option value="Acknwldg. sent" ${emailStatus === "Acknwldg. sent" ? "selected" : ""}>Acknwldg. sent</option>
+            <option value="Tickets sent" ${emailStatus === "Tickets sent" ? "selected" : ""}>Tickets sent</option>
+          </select>`;
         paymentCell = `<div class="status-cell">
             <select class="payment-select ${paid ? 'is-paid' : 'is-notpaid'}" data-id="${r.id}">
               <option value="Payment pending review" ${paid ? "" : "selected"}>Payment pending review</option>
               <option value="Paid" ${paid ? "selected" : ""}>Paid</option>
             </select>
-            ${emailBtn}
+            ${emailSelect}
           </div>`;
       } else {
         paymentCell = `<div class="status-cell">
             <span class="payment-locked ${paid ? 'is-paid' : 'is-notpaid'}">${paid ? "Paid" : "Payment pending review"}</span>
-            <span class="payment-locked ${emailSent ? 'is-paid' : 'is-notpaid'}">${emailSent ? "Conf email sent" : "Conf email not sent"}</span>
+            <span class="payment-locked ${emailClass}">${emailStatus}</span>
           </div>`;
       }
       const breakdownParts = [];
@@ -1089,21 +1093,14 @@
       });
     });
 
-    wrap.querySelectorAll(".email-btn:not(.sent)").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const record = regs.find(r => r.id === btn.dataset.id);
-        if (!record) return;
-        btn.disabled = true;
-        btn.textContent = "Sending...";
-        const ok = await sendConfirmationEmail(record);
+    wrap.querySelectorAll(".email-status-select").forEach(sel => {
+      sel.addEventListener("change", async () => {
+        sel.disabled = true;
+        const ok = await updateEmailStatus(sel.dataset.id, sel.value);
+        sel.disabled = false;
+        sel.classList.remove("is-none","is-ack","is-tickets");
         if (ok){
-          await markConfEmailSent(record.id);
-          btn.textContent = "Conf email sent";
-          btn.classList.add("sent");
-        } else {
-          btn.disabled = false;
-          btn.textContent = "Send conf email";
-          alert("Could not send the confirmation email. Please check the EmailJS setup and try again.");
+          sel.classList.add(sel.value === "Tickets sent" ? "is-tickets" : (sel.value === "Acknwldg. sent" ? "is-ack" : "is-none"));
         }
       });
     });
