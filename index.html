@@ -101,7 +101,13 @@
 
   /* ===== TICKET OPTION HIGHLIGHT CARDS ===== */
   .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
-  .age-note{ margin-top:14px; font-size:1.02rem; line-height:1.55; color:var(--ink-soft); font-style:italic; font-weight:500; }
+  .age-note{
+    margin-top:14px; padding-left:22px; font-size:1.02rem; line-height:1.55; color:var(--ink-soft);
+    font-style:italic; font-weight:500;
+  }
+  .age-note li{ margin-bottom:6px; }
+  .age-note li:last-child{ margin-bottom:0; }
+  .age-note li::marker{ color:var(--orange); font-weight:700; }
   .option-card{
     background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px 14px 18px 14px;
     box-shadow:var(--shadow);
@@ -401,7 +407,11 @@
           </div>
         </div>
 
-        <p class="age-note">Note: Halloween Haunt is not recommended for children under 13 years. Parents, please use your discretion.</p>
+        <ol class="age-note">
+          <li>Halloween Haunt is not recommended for children under 13 years. Parents, please use your discretion.</li>
+          <li>Children aged 15 and younger must be accompanied by an adult aged 21 or older.</li>
+          <li>Free entry for ages 2 and under.</li>
+        </ol>
       </div>
 
       <div class="register-col">
