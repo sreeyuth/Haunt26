@@ -101,6 +101,15 @@
 
   /* ===== TICKET OPTION HIGHLIGHT CARDS ===== */
   .highlights-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:16px; }
+  .menu-box{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:18px 20px;
+    margin-top:16px; box-shadow:var(--shadow);
+  }
+  .menu-box h3{ font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .menu-box ul{ margin:0; padding:0; list-style:none; display:grid; grid-template-columns:1fr 1fr; gap:7px 18px; }
+  .menu-box li{ font-size:0.86rem; line-height:1.4; color:var(--ink-soft); display:flex; gap:7px; }
+  .menu-box li::before{ content:"•"; color:var(--orange); flex:none; }
+  @media (max-width:640px){ .menu-box ul{ grid-template-columns:1fr; } }
   .age-note-title{
     margin-top:14px; margin-bottom:6px; font-size:1.02rem; font-weight:700; color:var(--orange); font-style:normal;
   }
@@ -411,6 +420,27 @@
           </div>
         </div>
 
+        <div class="menu-box">
+          <h3>🍽️ Dinner Menu</h3>
+          <ul>
+            <li>Assorted Rolls &amp; Butter</li>
+            <li>Assorted Salads</li>
+            <li>Garden Salad &amp; Dressing</li>
+            <li>Creamy Coleslaw</li>
+            <li>King's Feast Burgers &amp; Toppings Bar</li>
+            <li>Vegetarian Burgers</li>
+            <li>All Chicken Hot Dogs</li>
+            <li>Chicken Tenders</li>
+            <li>Assorted Pizzas (meat and veggie)</li>
+            <li>Potato Wedge Poutine Station</li>
+            <li>Canada's Wonderland</li>
+            <li>Chocolate Chunk Cookies</li>
+            <li>Oreo Dessert Parfaits</li>
+            <li>Ice Cream Cups</li>
+            <li>Hot &amp; Cold Beverages</li>
+          </ul>
+        </div>
+
         <p class="age-note-title">Please note:</p>
         <ol class="age-note">
           <li>Halloween Haunt is not recommended for children under 13 years. Parents, please use your discretion.</li>
@@ -463,6 +493,11 @@
                   <option value="Chalk River">Chalk River</option>
                   <option value="Deep River">Deep River</option>
                 </select>
+              </div>
+
+              <div class="field">
+                <label for="reg-dietary">Dietary Restrictions</label>
+                <input type="text" id="reg-dietary" placeholder="e.g. vegetarian, nut allergy, gluten-free (optional)">
               </div>
 
               <div class="divider-row"></div>
@@ -612,6 +647,7 @@
   const selfSelect = document.getElementById("reg-self");
   const pickupField = document.getElementById("pickup-field");
   const pickupSelect = document.getElementById("reg-pickup");
+  const dietaryInput = document.getElementById("reg-dietary");
   const totalAmountEl = document.getElementById("total-amount");
   const etransferAmountEl = document.getElementById("etransfer-amount");
   const confirmToggleBtn = document.getElementById("etransfer-confirm-btn");
@@ -929,6 +965,7 @@
       bus: counts.bus,
       self: counts.self,
       pickup: counts.bus > 0 ? pickupSelect.value : null,
+      dietary: dietaryInput.value.trim() || null,
       partySize: currentPartySize(),
       total: currentTotal(),
       waitlistApplication: (currentMode === "waitlist" && counts.bus > 0) ? true : null,
@@ -1059,6 +1096,7 @@
           "",
           r.name || "",
           r.email || "",
+          r.dietary || "—",
           parts.length ? parts.join(" / ") : "—",
           r.pickup || "—",
           String(r.partySize || 0),
@@ -1073,7 +1111,7 @@
       const totalAmount = regs.reduce((s,r) => s + (r.total||0), 0);
 
       doc.autoTable({
-        head: [["Attendance","Name","Email","Tickets","Pickup","Party Size","Total Amount","Payment","Conf Email"]],
+        head: [["Attendance","Name","Email","Dietary","Tickets","Pickup","Party Size","Total Amount","Payment","Conf Email"]],
         body: body,
         startY: 28,
         styles: { fontSize: 8 },
@@ -1160,6 +1198,7 @@
       rows += `<tr data-id="${r.id}">
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.email || "—")}</td>
+        <td>${escapeHtml(r.dietary || "—")}</td>
         <td>${r.partySize}${breakdown}</td>
         <td class="amt">$${(r.total||0).toFixed(2)}</td>
         <td>${paymentCell}</td>
@@ -1168,7 +1207,7 @@
     });
 
     wrap.innerHTML = `<table class="roster">
-      <thead><tr><th>Name</th><th>Email</th><th>Party Size</th><th>Total Amount</th><th>Registration Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Dietary Restrictions</th><th>Party Size</th><th>Total Amount</th><th>Registration Status</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 
