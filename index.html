@@ -134,6 +134,10 @@
   .field input:focus-visible{ outline:2px solid var(--orange); outline-offset:1px; }
 
   .ticket-types{ margin-bottom:24px; }
+  .waitlist-banner{
+    background:rgba(255,122,26,0.14); border:1px solid var(--orange); border-radius:12px; padding:14px 16px;
+    font-size:0.92rem; line-height:1.55; color:var(--ink); margin-bottom:22px; font-weight:500;
+  }
   select.pickup-select{
     width:100%; padding:15px 16px; border-radius:11px; border:1.5px solid var(--line);
     font-family:'Poppins',sans-serif; font-size:1.05rem; background:var(--panel-2); color:var(--ink);
@@ -251,15 +255,18 @@
   }
   .registration-toggle span{ font-size:0.96rem; color:var(--ink); }
   .registration-toggle strong.reg-open{ color:var(--green); }
+  .registration-toggle strong.reg-waitlist{ color:var(--orange); }
   .registration-toggle strong.reg-closed{ color:var(--rose); }
-  .toggle-reg-btn{
-    font-family:'Poppins',sans-serif; font-weight:700; font-size:0.88rem; padding:10px 20px; border-radius:999px;
-    border:none; cursor:pointer; transition:all .2s ease; color:#fff;
+  .mode-btn-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  .mode-btn{
+    font-family:'Poppins',sans-serif; font-weight:700; font-size:0.84rem; padding:9px 18px; border-radius:999px;
+    border:1.5px solid var(--line); cursor:pointer; transition:all .2s ease; color:var(--ink-soft); background:var(--panel-2);
   }
-  .toggle-reg-btn[data-current="open"]{ background:var(--rose); }
-  .toggle-reg-btn[data-current="closed"]{ background:var(--green); }
-  .toggle-reg-btn:hover{ opacity:0.9; }
-  .toggle-reg-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .mode-btn:hover{ border-color:var(--orange); }
+  .mode-btn.active[data-mode="open"]{ background:var(--green); border-color:var(--green); color:#fff; }
+  .mode-btn.active[data-mode="waitlist"]{ background:var(--orange); border-color:var(--orange); color:#1a0d02; }
+  .mode-btn.active[data-mode="closed"]{ background:var(--rose); border-color:var(--rose); color:#fff; }
+  .mode-btn:disabled{ opacity:0.6; cursor:not-allowed; }
 
   .admin-summary{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:28px; }
   .summary-card{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; text-align:center; }
@@ -413,6 +420,10 @@
                 <input type="email" id="reg-email" placeholder="you@example.com" autocomplete="email" required>
               </div>
 
+              <div class="waitlist-banner" id="waitlist-banner" hidden>
+                Option 1 (bus trip) has reached capacity. We are accepting applications to the waiting list, and no payment is required at this stage.
+              </div>
+
               <div class="field ticket-types">
                 <label>Tickets</label>
                 <p class="ticket-note">Choose Option 1 or Option 2 per person — see details on the left.</p>
@@ -441,26 +452,28 @@
 
               <div class="divider-row"></div>
 
-              <div class="total-box">
-                <span class="label">Total amount</span>
-                <span class="amount mono" id="total-amount">$0.00</span>
-              </div>
+              <div id="payment-section">
+                <div class="total-box">
+                  <span class="label">Total amount</span>
+                  <span class="amount mono" id="total-amount">$0.00</span>
+                </div>
 
-              <div class="etransfer-note">
-                E-transfer <strong id="etransfer-amount">$0.00</strong> to Chalk River Social Club at
-                <strong>crsocclb@cnl.ca</strong>
-                <button type="button" class="copy-btn" id="copy-email-btn" aria-label="Copy email address to clipboard">Copy</button>
-                and <strong class="emphasis-underline">return to this page</strong> to complete your registration.
-              </div>
+                <div class="etransfer-note">
+                  E-transfer <strong id="etransfer-amount">$0.00</strong> to Chalk River Social Club at
+                  <strong>crsocclb@cnl.ca</strong>
+                  <button type="button" class="copy-btn" id="copy-email-btn" aria-label="Copy email address to clipboard">Copy</button>
+                  and <strong class="emphasis-underline">return to this page</strong> to complete your registration.
+                </div>
 
-              <div class="field">
-                <fieldset>
-                  <legend>Have you done the e-transfer?</legend>
-                  <button type="button" class="confirm-toggle" id="etransfer-confirm-btn" aria-pressed="false">
-                    <span class="check-circle" aria-hidden="true"></span>
-                    Yes, I have completed the e-transfer
-                  </button>
-                </fieldset>
+                <div class="field">
+                  <fieldset>
+                    <legend>Have you done the e-transfer?</legend>
+                    <button type="button" class="confirm-toggle" id="etransfer-confirm-btn" aria-pressed="false">
+                      <span class="check-circle" aria-hidden="true"></span>
+                      Yes, I have completed the e-transfer
+                    </button>
+                  </fieldset>
+                </div>
               </div>
 
               <button type="submit" class="submit-btn" id="submit-btn" disabled>Complete Registration</button>
@@ -497,8 +510,12 @@
 
     <div class="admin-content" id="admin-content" hidden>
       <div class="registration-toggle" id="registration-toggle">
-        <span>Registration is currently <strong id="reg-status-label">—</strong></span>
-        <button class="toggle-reg-btn" id="toggle-reg-btn">…</button>
+        <span>Registration mode: <strong id="reg-status-label">—</strong></span>
+        <div class="mode-btn-group">
+          <button class="mode-btn" data-mode="open" id="mode-open-btn">Open</button>
+          <button class="mode-btn" data-mode="waitlist" id="mode-waitlist-btn">Waitlist</button>
+          <button class="mode-btn" data-mode="closed" id="mode-closed-btn">Closed</button>
+        </div>
       </div>
 
       <div class="admin-summary">
@@ -588,8 +605,11 @@
   const form = document.getElementById("reg-form");
   const formView = document.getElementById("form-view");
   const confirmView = document.getElementById("confirm-view");
+  const paymentSection = document.getElementById("payment-section");
+  const waitlistBanner = document.getElementById("waitlist-banner");
 
   let etransferConfirmed = false;
+  let currentMode = "open"; // "open" | "waitlist" | "closed"
 
   function populateCountSelect(selectEl, defaultValue){
     for (let i = 0; i <= 10; i++){
@@ -610,12 +630,37 @@
     };
   }
   function currentPartySize(){ const c = ticketCounts(); return c.bus + c.self; }
-  function currentTotal(){ return currentPartySize() * TICKET_PRICE; }
+
+  // During Waitlist mode, a bus-ticket application is free (pending capacity) —
+  // only any Self Transportation tickets in the same registration are charged.
+  function paymentRequired(){
+    const c = ticketCounts();
+    return !(currentMode === "waitlist" && c.bus > 0);
+  }
+  function currentTotal(){
+    const c = ticketCounts();
+    if (currentMode === "waitlist" && c.bus > 0){
+      return c.self * TICKET_PRICE;
+    }
+    return (c.bus + c.self) * TICKET_PRICE;
+  }
 
   function updatePickupVisibility(){
     const busCount = parseInt(busSelect.value, 10) || 0;
     pickupField.hidden = busCount === 0;
     if (busCount === 0){ pickupSelect.value = ""; }
+  }
+
+  function updatePaymentSectionVisibility(){
+    const needsPayment = paymentRequired();
+    paymentSection.hidden = !needsPayment;
+    if (!needsPayment){
+      // No payment expected for this application right now — don't hold the
+      // submit button hostage on an e-transfer confirmation that isn't needed.
+      etransferConfirmed = false;
+      confirmToggleBtn.classList.remove("selected");
+      confirmToggleBtn.setAttribute("aria-pressed", "false");
+    }
   }
 
   function refreshTotals(){
@@ -624,6 +669,7 @@
     totalAmountEl.textContent = formatted;
     etransferAmountEl.textContent = formatted;
     updatePickupVisibility();
+    updatePaymentSectionVisibility();
     updateSubmitState();
   }
 
@@ -633,10 +679,11 @@
     const partyOk = currentPartySize() >= 1;
     const busCount = parseInt(busSelect.value, 10) || 0;
     const pickupOk = busCount === 0 || pickupSelect.value !== "";
-    const ready = nameOk && emailOk && partyOk && pickupOk && etransferConfirmed === true;
+    const needsPayment = paymentRequired();
+    const ready = nameOk && emailOk && partyOk && pickupOk && (!needsPayment || etransferConfirmed === true);
     submitBtn.disabled = !ready;
     submitBtn.classList.toggle("enabled", ready);
-    if (!etransferConfirmed){
+    if (needsPayment && !etransferConfirmed){
       helperText.textContent = "Confirm you've sent the e-transfer above to activate submission.";
     } else if (!nameOk){
       helperText.textContent = "Add your name to finish reserving your seat.";
@@ -691,33 +738,60 @@
 
   refreshTotals();
 
-  /* ---------- Registration open/closed toggle ---------- */
-  async function getRegistrationOpen(){
+  /* ---------- Registration mode: open / waitlist / closed ---------- */
+  const BUS_CAPACITY = 54;
+
+  async function getRegistrationMode(){
     try{
-      const snap = await get(ref(db, "settings/registrationOpen"));
-      return snap.exists() ? snap.val() !== false : true;
+      const snap = await get(ref(db, "settings/registrationMode"));
+      const val = snap.exists() ? snap.val() : "open";
+      return (val === "waitlist" || val === "closed") ? val : "open";
     }catch(err){
-      console.error("Failed to check registration status:", err);
-      return true;
+      console.error("Failed to check registration mode:", err);
+      return "open";
     }
   }
-  async function setRegistrationOpen(isOpen){
+  async function setRegistrationMode(mode){
     try{
-      await set(ref(db, "settings/registrationOpen"), isOpen);
+      await set(ref(db, "settings/registrationMode"), mode);
       return true;
     }catch(err){
-      console.error("Failed to update registration status:", err);
+      console.error("Failed to update registration mode:", err);
       return false;
     }
   }
-  (async () => {
-    const isOpen = await getRegistrationOpen();
-    if (!isOpen){
+  function applyMode(mode){
+    currentMode = mode;
+    if (mode === "closed"){
       formView.hidden = true;
       confirmView.hidden = true;
+      waitlistBanner.hidden = true;
       document.getElementById("closed-view").hidden = false;
+    } else {
+      document.getElementById("closed-view").hidden = true;
+      waitlistBanner.hidden = mode !== "waitlist";
+      updatePaymentSectionVisibility();
+      updateSubmitState();
     }
+  }
+  (async () => {
+    const mode = await getRegistrationMode();
+    applyMode(mode);
   })();
+
+  async function maybeAutoActivateWaitlist(){
+    try{
+      const mode = await getRegistrationMode();
+      if (mode !== "open") return;
+      const allRegs = await fetchAllRegistrations();
+      const totalBus = allRegs.reduce((s,r) => s + (r.bus||0), 0);
+      if (totalBus >= BUS_CAPACITY){
+        await setRegistrationMode("waitlist");
+      }
+    }catch(err){
+      console.error("Failed to check bus capacity for auto-waitlist:", err);
+    }
+  }
 
   /* ---------- Storage helpers (Firebase Realtime Database) ---------- */
   async function saveRegistration(record){
@@ -842,6 +916,7 @@
       pickup: counts.bus > 0 ? pickupSelect.value : null,
       partySize: currentPartySize(),
       total: currentTotal(),
+      waitlistApplication: (currentMode === "waitlist" && counts.bus > 0) ? true : null,
       timestamp: Date.now()
     };
 
@@ -852,6 +927,7 @@
       formView.hidden = true;
       confirmView.hidden = false;
       if (adminUnlocked) loadRoster();
+      if (counts.bus > 0) maybeAutoActivateWaitlist();
     } else {
       submitBtn.disabled = false;
       submitBtn.classList.add("enabled");
@@ -897,27 +973,27 @@
   unlockBtn.addEventListener("click", tryUnlock);
   adminPasswordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
 
-  /* ---------- Registration open/closed admin toggle ---------- */
+  /* ---------- Registration mode admin selector ---------- */
   async function refreshRegistrationToggleUI(){
-    const isOpen = await getRegistrationOpen();
+    const mode = await getRegistrationMode();
     const label = document.getElementById("reg-status-label");
-    const btn = document.getElementById("toggle-reg-btn");
-    label.textContent = isOpen ? "OPEN" : "CLOSED";
-    label.className = isOpen ? "reg-open" : "reg-closed";
-    btn.textContent = isOpen ? "Close Registration" : "Reopen Registration";
-    btn.dataset.current = isOpen ? "open" : "closed";
+    label.textContent = mode.toUpperCase();
+    label.className = "reg-" + mode;
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === mode);
+    });
   }
-  document.getElementById("toggle-reg-btn").addEventListener("click", async () => {
-    const btn = document.getElementById("toggle-reg-btn");
-    const currentlyOpen = btn.dataset.current === "open";
-    btn.disabled = true;
-    const ok = await setRegistrationOpen(!currentlyOpen);
-    btn.disabled = false;
-    if (ok){
-      refreshRegistrationToggleUI();
-    } else {
-      alert("Could not update registration status. Please try again.");
-    }
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      document.querySelectorAll(".mode-btn").forEach(b => b.disabled = true);
+      const ok = await setRegistrationMode(btn.dataset.mode);
+      document.querySelectorAll(".mode-btn").forEach(b => b.disabled = false);
+      if (ok){
+        refreshRegistrationToggleUI();
+      } else {
+        alert("Could not update registration mode. Please try again.");
+      }
+    });
   });
 
   /* ---------- Payment Status gate (separate passcode) ---------- */
