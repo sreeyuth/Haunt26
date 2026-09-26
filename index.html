@@ -140,7 +140,8 @@
     background:var(--panel); border-radius:20px; box-shadow:var(--shadow); border:1px solid var(--line);
     padding:34px 34px 30px 34px;
   }
-  .ticket-stub h2{ font-size:1.7rem; font-weight:700; color:#fff; margin-bottom:22px; }
+  .ticket-stub h2{ font-size:1.7rem; font-weight:700; color:#fff; margin-bottom:4px; }
+  .deadline-extended-note{ font-size:0.86rem; color:var(--rose); margin:0 0 22px 0; }
 
   .field{ margin-bottom:24px; }
   .field label{ display:block; font-size:0.86rem; font-weight:600; letter-spacing:0.04em; text-transform:uppercase; color:var(--orange); margin-bottom:9px; }
@@ -395,7 +396,7 @@
           </div>
           <div class="row"><span class="tag">Bus</span> Departs ~5:30 AM Oct 17 · Returns ~5:30 AM Oct 18 · Stops in Pembroke, Petawawa, Chalk River, Deep River</div>
         </div>
-        <div class="deadline-note">⏰ Registration deadline: Friday, September 25</div>
+        <div class="deadline-note">⏰ Registration deadline: Friday, October 2</div>
 
         <div class="highlights-col">
           <div class="option-card opt1">
@@ -453,6 +454,7 @@
         <div class="ticket-stub" id="ticket-stub">
           <div id="form-view">
             <h2>Registration</h2>
+            <p class="deadline-extended-note"><em>Extended to Oct 2. No further extensions.</em></p>
 
             <form id="reg-form" novalidate>
               <div class="field">
