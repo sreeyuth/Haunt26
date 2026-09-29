@@ -610,6 +610,7 @@
       <div class="admin-toolbar">
         <h2>Registration roster</h2>
         <div class="toolbar-actions">
+          <button class="refresh-btn" id="copy-emails-btn">Copy Emails</button>
           <button class="refresh-btn" id="export-pdf-btn">Export to PDF</button>
           <button class="refresh-btn" id="refresh-btn">Refresh</button>
         </div>
@@ -1157,6 +1158,41 @@
   paymentPasswordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryPaymentUnlock(); });
 
   document.getElementById("refresh-btn").addEventListener("click", loadRoster);
+
+  document.getElementById("copy-emails-btn").addEventListener("click", async () => {
+    const btn = document.getElementById("copy-emails-btn");
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Copying...";
+    try{
+      const regs = await fetchAllRegistrations();
+      const uniqueEmails = [...new Set(
+        regs.map(r => (r.email || "").trim()).filter(e => e.length > 0)
+      )];
+      const emailString = uniqueEmails.join("; ");
+      try{
+        await navigator.clipboard.writeText(emailString);
+      }catch(err){
+        const temp = document.createElement("textarea");
+        temp.value = emailString;
+        temp.style.position = "fixed";
+        temp.style.opacity = "0";
+        document.body.appendChild(temp);
+        temp.select();
+        try{ document.execCommand("copy"); }catch(e2){ console.error("Copy fallback failed:", e2); }
+        document.body.removeChild(temp);
+      }
+      btn.textContent = `Copied ${uniqueEmails.length}!`;
+    }catch(err){
+      console.error("Failed to copy emails:", err);
+      btn.textContent = "Copy failed";
+    }finally{
+      setTimeout(() => {
+        btn.textContent = originalLabel;
+        btn.disabled = false;
+      }, 2000);
+    }
+  });
 
   document.getElementById("export-pdf-btn").addEventListener("click", async () => {
     const exportBtn = document.getElementById("export-pdf-btn");
