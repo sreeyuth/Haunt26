@@ -368,8 +368,28 @@
   .email-status-select.is-tickets{ background:var(--green); border-color:var(--green); color:#fff; }
   .payment-locked.is-ack{ background:var(--purple); color:#fff; }
   .payment-locked.is-none{ background:var(--panel-2); border:1px solid var(--orange); color:var(--orange); }
-  .del-btn{ background:none; border:none; color:var(--rose); cursor:pointer; font-size:0.8rem; font-weight:600; }
+  .del-btn{ background:none; border:none; color:var(--rose); cursor:pointer; font-size:0.8rem; font-weight:600; padding:0; }
   .del-btn:hover{ text-decoration:underline; }
+  .row-actions{ display:flex; flex-direction:column; align-items:flex-start; gap:8px; }
+  .edit-btn{
+    font-family:'Poppins',sans-serif; font-weight:600; font-size:0.76rem; padding:4px 12px; border-radius:8px;
+    border:1.5px solid var(--orange); background:transparent; color:var(--orange); cursor:pointer;
+  }
+  .edit-btn:hover:not(:disabled){ background:var(--orange); color:#1a0d02; }
+  .edit-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+  .cancel-btn{ background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:0.78rem; font-weight:600; padding:0; text-decoration:underline; }
+  .edit-input{
+    width:100%; min-width:120px; padding:7px 9px; border-radius:8px; border:1.5px solid var(--orange);
+    background:var(--panel-2); color:var(--ink); font-family:'Poppins',sans-serif; font-size:0.86rem;
+  }
+  .edit-input:focus{ outline:none; border-color:var(--purple); }
+  .edit-counts{ display:flex; flex-direction:column; gap:6px; }
+  .edit-counts label{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.78rem; color:var(--ink-soft); }
+  .edit-counts select{
+    padding:4px 6px; border-radius:6px; border:1.5px solid var(--orange); background:var(--panel-2); color:var(--ink);
+    font-family:'Poppins',sans-serif; font-size:0.8rem;
+  }
+  tr.is-editing{ background:rgba(255,122,26,0.06); }
   .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft); background:var(--panel); border-radius:14px; border:1px dashed var(--line); }
   .empty-state svg{ width:44px; height:44px; margin-bottom:12px; opacity:0.6; }
 
@@ -618,9 +638,10 @@
 
       <div class="payment-gate" id="payment-gate">
         <svg viewBox="0 0 24 24" fill="none"><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <span>Registration Status is view-only. Enter the code to edit it.</span>
+        <span id="payment-gate-label">Registration Status is view-only. Enter the code to edit it.</span>
         <input type="password" id="payment-password" inputmode="numeric" maxlength="8" placeholder="Code" autocomplete="off">
         <button class="payment-unlock-btn" id="payment-unlock-btn">Unlock editing</button>
+        <button class="payment-unlock-btn" id="payment-save-btn" hidden>Save changes</button>
         <span class="payment-error" id="payment-error"></span>
       </div>
 
@@ -857,6 +878,26 @@
       updateSubmitState();
     }
   }
+  // Manual-override flags: when an admin deliberately picks a mode that an automatic rule
+  // (capacity or deadline) would undo, the flag tells that rule to stand down.
+  async function getFlag(name){
+    try{
+      const snap = await get(ref(db, "settings/" + name));
+      return snap.exists() && snap.val() === true;
+    }catch(err){
+      console.error("Failed to read flag " + name + ":", err);
+      return false;
+    }
+  }
+  async function setFlag(name, value){
+    try{
+      await set(ref(db, "settings/" + name), value === true);
+      return true;
+    }catch(err){
+      console.error("Failed to write flag " + name + ":", err);
+      return false;
+    }
+  }
   (async () => {
     const mode = await getRegistrationMode();
     applyMode(mode);
@@ -866,6 +907,7 @@
     try{
       const mode = await getRegistrationMode();
       if (mode !== "open") return;
+      if (await getFlag("capacityOverride")) return;
       const allRegs = await fetchAllRegistrations();
       const totalBus = allRegs.reduce((s,r) => s + (r.bus||0), 0);
       if (totalBus >= BUS_CAPACITY){
@@ -893,8 +935,8 @@
       busTrackerFillEl.style.width = pct + "%";
       busTrackerFillEl.classList.toggle("is-full", totalBus >= BUS_CAPACITY);
       // If capacity is reached while registration is still open, flip to Waitlist automatically.
-      getRegistrationMode().then(mode => {
-        if (mode === "open" && totalBus >= BUS_CAPACITY){
+      Promise.all([getRegistrationMode(), getFlag("capacityOverride")]).then(([mode, capOverride]) => {
+        if (mode === "open" && totalBus >= BUS_CAPACITY && !capOverride){
           setRegistrationMode("waitlist").then(() => applyMode("waitlist"));
         }
       });
@@ -907,18 +949,25 @@
   const REGISTRATION_DEADLINE = new Date(2026, 9, 2, 17, 0, 0); // October 2, 2026, 5:00 PM (local time)
   const countdownTimerEl = document.getElementById("countdown-timer");
   let deadlineClosureTriggered = false;
+  let deadlineOverrideActive = false;
 
   function renderCountdown(){
     const now = new Date();
     const diff = REGISTRATION_DEADLINE.getTime() - now.getTime();
     if (diff <= 0){
-      countdownTimerEl.textContent = "Registration deadline has passed";
+      countdownTimerEl.textContent = deadlineOverrideActive
+        ? "Deadline passed — reopened by admin"
+        : "Registration deadline has passed";
       if (!deadlineClosureTriggered){
         deadlineClosureTriggered = true;
-        getRegistrationMode().then(mode => {
-          if (mode !== "closed"){
-            setRegistrationMode("closed").then(() => applyMode("closed"));
-          }
+        getFlag("deadlineOverride").then(override => {
+          deadlineOverrideActive = override;
+          if (override){ renderCountdown(); return; }
+          getRegistrationMode().then(mode => {
+            if (mode !== "closed"){
+              setRegistrationMode("closed").then(() => applyMode("closed"));
+            }
+          });
         });
       }
       return;
@@ -1125,10 +1174,28 @@
   }
   document.querySelectorAll(".mode-btn").forEach(btn => {
     btn.addEventListener("click", async () => {
+      const mode = btn.dataset.mode;
       document.querySelectorAll(".mode-btn").forEach(b => b.disabled = true);
-      const ok = await setRegistrationMode(btn.dataset.mode);
+
+      // If an automatic rule would immediately undo this choice, tell it to stand down.
+      const deadlinePassed = Date.now() >= REGISTRATION_DEADLINE.getTime();
+      let capacityReached = false;
+      if (mode === "open"){
+        const regs = await fetchAllRegistrations();
+        capacityReached = regs.reduce((s,r) => s + (r.bus||0), 0) >= BUS_CAPACITY;
+      }
+      const deadlineOverride = deadlinePassed && mode !== "closed";
+      const capacityOverride = mode === "open" && capacityReached;
+
+      // Flags first, then the mode, so no visitor can read the new mode before the flags exist.
+      await setFlag("deadlineOverride", deadlineOverride);
+      await setFlag("capacityOverride", capacityOverride);
+      deadlineOverrideActive = deadlineOverride;
+      const ok = await setRegistrationMode(mode);
       document.querySelectorAll(".mode-btn").forEach(b => b.disabled = false);
       if (ok){
+        applyMode(mode);
+        renderCountdown();
         refreshRegistrationToggleUI();
       } else {
         alert("Could not update registration mode. Please try again.");
@@ -1138,14 +1205,19 @@
 
   /* ---------- Payment Status gate (separate passcode) ---------- */
   const paymentGate = document.getElementById("payment-gate");
+  const paymentGateLabel = document.getElementById("payment-gate-label");
   const paymentPasswordInput = document.getElementById("payment-password");
   const paymentError = document.getElementById("payment-error");
   const paymentUnlockBtn = document.getElementById("payment-unlock-btn");
+  const paymentSaveBtn = document.getElementById("payment-save-btn");
 
   function tryPaymentUnlock(){
     if (paymentPasswordInput.value === PAYMENT_CODE){
       paymentUnlocked = true;
-      paymentGate.hidden = true;
+      paymentPasswordInput.hidden = true;
+      paymentUnlockBtn.hidden = true;
+      paymentSaveBtn.hidden = false;
+      paymentGateLabel.textContent = "Editing is unlocked.";
       paymentError.textContent = "";
       loadRoster();
     } else {
@@ -1156,6 +1228,24 @@
   }
   paymentUnlockBtn.addEventListener("click", tryPaymentUnlock);
   paymentPasswordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryPaymentUnlock(); });
+
+  paymentSaveBtn.addEventListener("click", async () => {
+    paymentSaveBtn.disabled = true;
+    // Commit any rows still being edited so nothing is lost when editing locks.
+    const openRows = Array.from(document.querySelectorAll("#roster-wrap tr.is-editing"));
+    for (const rowEl of openRows){
+      const saved = await commitRowEdit(rowEl);
+      if (!saved){ paymentSaveBtn.disabled = false; return; }
+    }
+    paymentSaveBtn.disabled = false;
+    paymentUnlocked = false;
+    paymentPasswordInput.value = "";
+    paymentPasswordInput.hidden = false;
+    paymentUnlockBtn.hidden = false;
+    paymentSaveBtn.hidden = true;
+    paymentGateLabel.textContent = "Registration Status is view-only. Enter the code to edit it.";
+    loadRoster();
+  });
 
   document.getElementById("refresh-btn").addEventListener("click", loadRoster);
 
@@ -1318,14 +1408,21 @@
       if (r.pickup) breakdownParts.push("Pickup: " + r.pickup);
       const breakdown = breakdownParts.length ? `<div class="party-breakdown">${breakdownParts.join(", ")}</div>` : "";
 
-      rows += `<tr data-id="${r.id}">
+      const actionsCell = paymentUnlocked
+        ? `<div class="row-actions">
+             <button class="del-btn" data-id="${r.id}">Delete</button>
+             <button class="edit-btn" data-id="${r.id}">Edit</button>
+           </div>`
+        : "";
+
+      rows += `<tr data-id="${r.id}" data-waitlist="${r.waitlistApplication ? "1" : ""}">
         <td>${escapeHtml(r.name)}</td>
         <td>${escapeHtml(r.email || "—")}</td>
         <td>${escapeHtml(r.dietary || "—")}</td>
         <td>${r.partySize}${breakdown}</td>
         <td class="amt">$${(r.total||0).toFixed(2)}</td>
         <td>${paymentCell}</td>
-        <td><button class="del-btn" data-id="${r.id}">Remove</button></td>
+        <td class="actions-td">${actionsCell}</td>
       </tr>`;
     });
 
@@ -1361,12 +1458,102 @@
 
     wrap.querySelectorAll(".del-btn").forEach(btn => {
       btn.addEventListener("click", async () => {
+        const confirmed = confirm("Are you sure you want to delete this entry? This cannot be undone.");
+        if (!confirmed) return;
         btn.disabled = true;
         btn.textContent = "...";
         await deleteRegistration(btn.dataset.id);
         loadRoster();
       });
     });
+
+    wrap.querySelectorAll(".edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const rowEl = btn.closest("tr");
+        const record = regs.find(r => r.id === btn.dataset.id);
+        if (rowEl && record) enterEditMode(rowEl, record);
+      });
+    });
+  }
+
+  /* ---------- Inline row editing ---------- */
+  function escapeAttr(str){
+    return escapeHtml(str).replace(/"/g, "&quot;");
+  }
+
+  function enterEditMode(rowEl, r){
+    if (rowEl.classList.contains("is-editing")) return;
+    rowEl.classList.add("is-editing");
+    const cells = rowEl.querySelectorAll("td");
+    const countOptions = (selected) =>
+      Array.from({length: 11}, (_, i) => `<option value="${i}" ${i === selected ? "selected" : ""}>${i}</option>`).join("");
+    const pickupOptions = ["", "Pembroke", "Petawawa", "Chalk River", "Deep River"]
+      .map(p => `<option value="${p}" ${(r.pickup || "") === p ? "selected" : ""}>${p || "— none —"}</option>`).join("");
+
+    cells[0].innerHTML = `<input class="edit-input" data-field="name" value="${escapeAttr(r.name)}">`;
+    cells[1].innerHTML = `<input class="edit-input" type="email" data-field="email" value="${escapeAttr(r.email)}">`;
+    cells[2].innerHTML = `<input class="edit-input" data-field="dietary" value="${escapeAttr(r.dietary)}">`;
+    cells[3].innerHTML = `<div class="edit-counts">
+        <label>Bus <select data-field="bus">${countOptions(r.bus || 0)}</select></label>
+        <label>Self <select data-field="self">${countOptions(r.self || 0)}</select></label>
+        <label>Pickup <select data-field="pickup">${pickupOptions}</select></label>
+      </div>`;
+    cells[6].innerHTML = `<div class="row-actions">
+        <button class="del-btn" data-id="${r.id}">Delete</button>
+        <button class="edit-btn" data-role="done">Done</button>
+        <button class="cancel-btn" data-role="cancel">Cancel</button>
+      </div>`;
+
+    cells[6].querySelector('[data-role="done"]').addEventListener("click", async (e) => {
+      const doneBtn = e.currentTarget;
+      doneBtn.disabled = true;
+      doneBtn.textContent = "Saving...";
+      const ok = await commitRowEdit(rowEl);
+      if (ok){ loadRoster(); }
+      else { doneBtn.disabled = false; doneBtn.textContent = "Done"; }
+    });
+    cells[6].querySelector('[data-role="cancel"]').addEventListener("click", () => loadRoster());
+    cells[6].querySelector(".del-btn").addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to delete this entry? This cannot be undone.")) return;
+      await deleteRegistration(r.id);
+      loadRoster();
+    });
+  }
+
+  async function commitRowEdit(rowEl){
+    const id = rowEl.dataset.id;
+    const field = (f) => rowEl.querySelector('[data-field="' + f + '"]');
+    const name = field("name").value.trim();
+    const email = field("email").value.trim();
+    const dietary = field("dietary").value.trim();
+    const bus = parseInt(field("bus").value, 10) || 0;
+    const self = parseInt(field("self").value, 10) || 0;
+    const pickup = field("pickup").value;
+
+    if (!name){ alert("Name can't be empty."); return false; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ alert("Please enter a valid email address."); return false; }
+    if (bus + self < 1){ alert("At least one ticket is required."); return false; }
+    if (bus > 0 && !pickup){ alert("Select a pick up point for the Bus Trip tickets."); return false; }
+
+    // Waitlist applications are only charged for Self Transportation tickets.
+    const isWaitlist = rowEl.dataset.waitlist === "1";
+    const total = isWaitlist ? self * TICKET_PRICE : (bus + self) * TICKET_PRICE;
+
+    try{
+      await update(ref(db, "registrations/" + id), {
+        name, email,
+        dietary: dietary || null,
+        bus, self,
+        pickup: bus > 0 ? pickup : null,
+        partySize: bus + self,
+        total
+      });
+      return true;
+    }catch(err){
+      console.error("Failed to save row edit:", err);
+      alert("Could not save changes to this entry. Please try again.");
+      return false;
+    }
   }
 
   function escapeHtml(str){
